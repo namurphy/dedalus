@@ -80,14 +80,11 @@ class Domain:
         # Indices
         elif isinstance(basis_like, int):
             return self.bases[basis_like]
-        # Names
-        if isinstance(basis_like, str):
-            for basis in self.bases:
-                if basis_like == basis.name:
-                    return basis
-        # Otherwise
-        else:
+        if not isinstance(basis_like, str):
             return None
+        for basis in self.bases:
+            if basis_like == basis.name:
+                return basis
 
     def grids(self, scales=None):
         warnings.warn("domain.grids is deprecated, use domain.all_grids instead", DeprecationWarning)
@@ -148,7 +145,7 @@ class Domain:
         return Field(domain=self, **kw)
 
     def new_fields(self, nfields, **kw):
-        return [self.new_field(**kw) for n in range(nfields)]
+        return [self.new_field(**kw) for _ in range(nfields)]
 
     def remedy_scales(self, scales):
         # Try casting to tuple
@@ -190,7 +187,7 @@ def combine_domains(*domains):
     domains = [domain for domain in domains if not isinstance(domain, EmptyDomain)]
     # Get set
     domain_set = set(domains)
-    if len(domain_set) == 0:
+    if not domain_set:
         return EmptyDomain()
     if len(domain_set) > 1:
         raise ValueError("Non-unique domains")

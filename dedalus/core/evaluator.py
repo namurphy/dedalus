@@ -243,7 +243,7 @@ class Handler:
             op = FutureField.cast(task, self.domain)
 
         # Build task dictionary
-        task = dict()
+        task = {}
         task['operator'] = op
         task['layout'] = self.domain.distributor.get_layout_object(layout)
         task['name'] = name
@@ -270,7 +270,7 @@ class DictionaryHandler(Handler):
 
     def __init__(self, *args, **kw):
         Handler.__init__(self, *args, **kw)
-        self.fields = dict()
+        self.fields = {}
 
     def __getitem__(self, item):
         return self.fields[item]
@@ -290,7 +290,7 @@ class SystemHandler(Handler):
         """Build FieldSystem and set task outputs."""
 
         nfields = len(self.tasks)
-        names = ['sys'+str(i) for i in range(nfields)]
+        names = [f'sys{str(i)}' for i in range(nfields)]
         fields = [self.domain.new_field(name=name) for name in names]
         self.system = FieldSystem(fields)
 
@@ -370,10 +370,16 @@ class FileHandler(Handler):
             elif mode == "append":
                 set_nums = []
                 if sets:
-                    for set in sets:
-                        m = re.match("{}_s(\d+)$".format(base_path.stem), set.stem)
-                        if m:
-                            set_nums.append(int(m.groups()[0]))
+                    set_nums.extend(
+                        int(m.groups()[0])
+                        for set in sets
+                        if (
+                            m := re.match(
+                                "{}_s(\d+)$".format(base_path.stem), set.stem
+                            )
+                        )
+                    )
+
                     max_set = max(set_nums)
                     joined_file = base_path.joinpath("{}_s{}.h5".format(base_path.stem,max_set))
                     p0_file = base_path.joinpath("{0}_s{1}/{0}_s{1}_p0.h5".format(base_path.stem,max_set))
@@ -496,7 +502,7 @@ class FileHandler(Handler):
         scale_group.create_dataset(name='iteration', shape=(0,), maxshape=(None,), dtype=np.int)
         scale_group.create_dataset(name='write_number', shape=(0,), maxshape=(None,), dtype=np.int)
         const = scale_group.create_dataset(name='constant', data=np.array([0.], dtype=np.float64))
-        for axis, basis in enumerate(domain.bases):
+        for basis in domain.bases:
             coeff_name = basis.element_label + basis.name
             scale_group.create_dataset(name=coeff_name, data=basis.elements)
             scale_group.create_group(basis.name)
@@ -538,15 +544,14 @@ class FileHandler(Handler):
             for axis, basis in enumerate(domain.bases):
                 if constant[axis]:
                     sn = lookup = 'constant'
+                elif layout.grid_space[axis]:
+                    sn = basis.name
+                    axscale = scales[axis]
+                    if str(axscale) not in scale_group[sn]:
+                        scale_group[sn].create_dataset(name=str(axscale), data=basis.grid(axscale))
+                    lookup = '/'.join((sn, str(axscale)))
                 else:
-                    if layout.grid_space[axis]:
-                        sn = basis.name
-                        axscale = scales[axis]
-                        if str(axscale) not in scale_group[sn]:
-                            scale_group[sn].create_dataset(name=str(axscale), data=basis.grid(axscale))
-                        lookup = '/'.join((sn, str(axscale)))
-                    else:
-                        sn = lookup = basis.element_label + basis.name
+                    sn = lookup = basis.element_label + basis.name
                 scale = scale_group[lookup]
                 dset.dims.create_scale(scale, lookup)
                 dset.dims[axis+1].label = sn
@@ -583,7 +588,7 @@ class FileHandler(Handler):
         write_num_dset[index] = self.total_write_num
 
         # Create task datasets
-        for task_num, task in enumerate(self.tasks):
+        for task in self.tasks:
             out = task['out']
             out.set_scales(task['scales'], keep_data=True)
             out.require_layout(task['layout'])

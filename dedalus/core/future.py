@@ -44,9 +44,8 @@ class Future(Operand):
     def __init__(self, *args, domain=None, out=None):
 
         # Check arity
-        if self.arity is not None:
-            if len(args) != self.arity:
-                raise ValueError("Wrong number of arguments.")
+        if self.arity is not None and len(args) != self.arity:
+            raise ValueError("Wrong number of arguments.")
         # Infer domain from arguments
         if domain is None:
             domain = unique_domain(out, *args)
@@ -88,9 +87,8 @@ class Future(Operand):
             if isinstance(arg, (Data, Future)):
                 atoms.update(arg.atoms(*types, include_out=include_out))
         # Include output as directed
-        if include_out:
-            if isinstance(self.out, types):
-                atoms.add(self.out)
+        if include_out and isinstance(self.out, types):
+            atoms.add(self.out)
 
         return atoms
 
@@ -117,10 +115,9 @@ class Future(Operand):
         if self.store_last and (id is not None):
             if id == self.last_id:
                 return self.last_out
-            else:
-                # Clear cache to free output field
-                self.last_id = None
-                self.last_out = None
+            # Clear cache to free output field
+            self.last_id = None
+            self.last_out = None
 
         # Recursively attempt evaluation of all operator arguments
         # Track evaluation success with flag
@@ -142,17 +139,11 @@ class Future(Operand):
             return None
 
         # Check conditions unless forcing evaluation
-        if not force:
-            # Return None if operator conditions are not satisfied
-            if not self.check_conditions():
-                return None
+        if not force and not self.check_conditions():
+            return None
 
         # Allocate output field if necessary
-        if self.out:
-            out = self.out
-        else:
-            out = self.domain.new_data(self.future_type)
-
+        out = self.out or self.domain.new_data(self.future_type)
         # Copy metadata
         out.meta = self.meta
         out.set_scales(self.domain.dealias, keep_data=False)
@@ -242,10 +233,7 @@ class FutureField(Future):
         # Cast to operand
         input = Operand.cast(input, domain=domain)
         # Cast to FutureField
-        if isinstance(input, FutureField):
-            return input
-        else:
-            return FieldCopy(input, domain)
+        return input if isinstance(input, FutureField) else FieldCopy(input, domain)
 
 
 def unique_domain(*args):

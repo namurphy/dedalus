@@ -39,14 +39,9 @@ def build_pencils(domain):
     trans_shape = domain.local_coeff_shape[:-1]
     indices = np.ndindex(*trans_shape)
 
-    # Construct corresponding trans diff consts and build pencils
-    pencils = []
     scales = domain.remedy_scales(1)
     start = domain.distributor.coeff_layout.start(scales)[:-1]
-    for index in indices:
-        pencils.append(Pencil(domain, index, start+index))
-
-    return pencils
+    return [Pencil(domain, index, start+index) for index in indices]
 
 
 def build_matrices(pencils, problem, matrices):
@@ -98,8 +93,7 @@ class Pencil:
                 matrices[name].append(submatrices[name])
 
         # Build block matrices
-        for name in matrices:
-            blocks = matrices[name]
+        for name, blocks in matrices.items():
             matrix = same_dense_block_diag(blocks, format='csr', dtype=dtype)
             matrix.eliminate_zeros()
             matrices[name] = matrix
@@ -115,7 +109,7 @@ class Pencil:
             matrix = matrices[name] @ self.pre_right.T
             # Store full matrix
             matrix.eliminate_zeros()
-            setattr(self, name+'_full', matrix.tocsr().copy())
+            setattr(self, f'{name}_full', matrix.tocsr().copy())
             # Store truncated matrix
             matrix.data[np.abs(matrix.data) < problem.entry_cutoff] = 0
             matrix.eliminate_zeros()
@@ -126,14 +120,15 @@ class Pencil:
         for name in names:
             matrix = matrices[name]
             matrix = expand_pattern(matrix, self.LHS)
-            setattr(self, name+'_exp', matrix.tocsr().copy())
+            setattr(self, f'{name}_exp', matrix.tocsr().copy())
 
     def _build_uncoupled_submatrices(self, problem, names, last_index, cacheid=None):
 
         index = list(self.global_index) + [last_index]
-        index_dict = {}
-        for axis, basis in enumerate(self.domain.bases):
-            index_dict['n'+basis.name] = index[axis]
+        index_dict = {
+            f'n{basis.name}': index[axis]
+            for axis, basis in enumerate(self.domain.bases)
+        }
 
         # Find applicable equations
         selected_eqs = [eq for eq in problem.eqs if eval(eq['raw_condition'], index_dict)]

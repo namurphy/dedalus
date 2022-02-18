@@ -133,10 +133,7 @@ class Data(Operand):
         return '<{} {}>'.format(self.__class__.__name__, id(self))
 
     def __str__(self):
-        if self.name:
-            return self.name
-        else:
-            return repr(self)
+        return self.name or repr(self)
 
     def set_scales(self, scales, keep_data=True):
         """Set new transform scales."""
@@ -160,17 +157,11 @@ class Data(Operand):
         return self
 
     def split(self, *vars):
-        if self in vars:
-            return [self, 0]
-        else:
-            return [0, self]
+        return [self, 0] if self in vars else [0, self]
 
     def replace(self, old, new):
         """Replace an object in the expression tree."""
-        if self == old:
-            return new
-        else:
-            return self
+        return new if self == old else self
 
     def order(self, *ops):
         return 0
@@ -183,10 +174,7 @@ class Data(Operand):
 
     def sym_diff(self, var):
         """Symbolically differentiate with respect to var."""
-        if self == var:
-            return 1
-        else:
-            return 0
+        return 1 if self == var else 0
 
 
 class Scalar(Data):
@@ -211,10 +199,7 @@ class Scalar(Data):
         self.value = value
 
     def __eq__(self, other):
-        if self.name is None:
-            return (self.value == other)
-        else:
-            return super().__eq__(other)
+        return (self.value == other) if self.name is None else super().__eq__(other)
 
     def __hash__(self):
         return hash((self.name, self.value))
@@ -224,10 +209,7 @@ class Scalar(Data):
         return self.value
 
     def __str__(self):
-        if self.name:
-            return self.name
-        else:
-            return repr(self.value)
+        return self.name or repr(self.value)
 
 
 class Array(Data):
@@ -252,10 +234,7 @@ class Array(Data):
         # Set metadata
         for i in range(self.domain.dim):
             axmeta = self.meta[i]
-            if i == axis:
-                axmeta['constant'] = False
-            else:
-                axmeta['constant'] = True
+            axmeta['constant'] = i != axis
             if 'parity' in axmeta:
                 axmeta['parity'] = 1
         # Save local slice
@@ -269,10 +248,7 @@ class Array(Data):
         # Set metadata
         for i in range(self.domain.dim):
             axmeta = self.meta[i]
-            if i == axis:
-                axmeta['constant'] = False
-            else:
-                axmeta['constant'] = True
+            axmeta['constant'] = i != axis
             if 'parity' in axmeta:
                 axmeta['parity'] = 1
         # Save data
@@ -445,12 +421,10 @@ class Field(Data):
     def require_local(self, axis):
         """Require an axis to be local."""
 
-        # Move towards transform path, since the surrounding layouts are local
-        if self.layout.grid_space[axis]:
-            while not self.layout.local[axis]:
+        while not self.layout.local[axis]:
+            if self.layout.grid_space[axis]:
                 self.towards_coeff_space()
-        else:
-            while not self.layout.local[axis]:
+            else:
                 self.towards_grid_space()
 
     def differentiate(self, *args, **kw):
@@ -511,8 +485,8 @@ class Field(Data):
         problem = LBVP(domain, variables=['out'])
         problem.parameters['f'] = self
         problem.parameters['bc'] = bc_val
-        problem.add_equation('d'+basis_name+'(out) = f')
-        problem.add_bc(bc_type+'(out) = bc')
+        problem.add_equation(f'd{basis_name}(out) = f')
+        problem.add_bc(f'{bc_type}(out) = bc')
 
         solver = problem.build_solver()
         solver.solve()
@@ -547,9 +521,8 @@ class Field(Data):
         domain = self.domain
         # Only allow NCCs that are non-constant along coupled bases
         for basis in domain.bases:
-            if basis.separable:
-                if not self.meta[basis.name]['constant']:
-                    raise ValueError("{} is non-constant along separable direction '{}'.".format(self, basis.name))
+            if basis.separable and not self.meta[basis.name]['constant']:
+                raise ValueError("{} is non-constant along separable direction '{}'.".format(self, basis.name))
         # Scatter transverse-constant coefficients
         basis = domain.bases[-1]
         coeffs = np.zeros(basis.coeff_size, dtype=basis.coeff_dtype)

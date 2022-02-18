@@ -69,7 +69,6 @@ def unify(objects):
     for i, object in enumerate(objects):
         if i == 0:
             OBJECT = object
-        else:
-            if object != OBJECT:
-                raise ValueError("Objects are not all equal.")
+        elif object != OBJECT:
+            raise ValueError("Objects are not all equal.")
     return OBJECT

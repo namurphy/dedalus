@@ -65,11 +65,11 @@ class MultistepIMEX:
         self.MX = MX = deque()
         self.LX = LX = deque()
         self.F = F = deque()
-        for j in range(self.amax):
+        for _ in range(self.amax):
             MX.append(CoeffSystem(pencil_length, domain))
-        for j in range(self.bmax):
+        for _ in range(self.bmax):
             LX.append(CoeffSystem(pencil_length, domain))
-        for j in range(self.cmax):
+        for _ in range(self.cmax):
             F.append(CoeffSystem(pencil_length, domain))
 
         # Attributes
@@ -507,8 +507,8 @@ class RungeKuttaIMEX:
 
         # Create coefficient systems for multistep history
         self.MX0 = CoeffSystem(pencil_length, domain)
-        self.LX = LX = [CoeffSystem(pencil_length, domain) for i in range(self.stages)]
-        self.F = F = [CoeffSystem(pencil_length, domain) for i in range(self.stages)]
+        self.LX = LX = [CoeffSystem(pencil_length, domain) for _ in range(self.stages)]
+        self.F = F = [CoeffSystem(pencil_length, domain) for _ in range(self.stages)]
 
         self._LHS_params = None
 
@@ -567,7 +567,7 @@ class RungeKuttaIMEX:
 
             # Construct RHS(n,i)
             np.copyto(RHS.data, MX0.data)
-            for j in range(0, i):
+            for j in range(i):
                 RHS.data += (k * A[i,j]) * F[j].data
                 RHS.data -= (k * H[i,j]) * LX[j].data
 

@@ -38,7 +38,7 @@ def test_heat_1d_periodic(benchmark, x_basis_class, Nx, timestepper, dtype):
     solver = problem.build_solver(timestepper)
     dt = 1e-5
     iter = 10
-    for i in range(iter):
+    for _ in range(iter):
         solver.step(dt)
     # Check solution
     amp = 1 - np.exp(-solver.sim_time)
@@ -71,7 +71,7 @@ def test_heat_1d_periodic_firstorder(benchmark, x_basis_class, Nx, timestepper, 
     solver = problem.build_solver(timestepper)
     dt = 1e-5
     iter = 10
-    for i in range(iter):
+    for _ in range(iter):
         solver.step(dt)
     # Check solution
     amp = 1 - np.exp(-solver.sim_time)
@@ -104,7 +104,7 @@ def test_heat_1d_nonperiodic(benchmark, x_basis_class, Nx, timestepper, dtype):
     solver = problem.build_solver(timestepper)
     dt = 1e-5
     iter = 10
-    for i in range(iter):
+    for _ in range(iter):
         solver.step(dt)
     # Check solution
     amp = 1 - np.exp(-solver.sim_time)
@@ -139,7 +139,7 @@ def test_heat_ode_1d_nonperiodic(benchmark, x_basis_class, Nx, timestepper, dtyp
     solver = problem.build_solver(timestepper)
     dt = 1e-5
     iter = 10
-    for i in range(iter):
+    for _ in range(iter):
         solver.step(dt)
     # Check solution
     amp = 1 - np.exp(-solver.sim_time)

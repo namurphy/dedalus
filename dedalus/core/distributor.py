@@ -134,16 +134,13 @@ class Distributor:
                         layout_i = Layout(domain, mesh, coords, local, grid_space, dtype)
                         if not dry_run:
                             path_i = Transform(self.layouts[-1], layout_i, d, basis)
-                        break
-                    # Otherwise transpose
                     else:
                         local[d] = True
                         local[d+1] = False
                         layout_i = Layout(domain, mesh, coords, local, grid_space, dtype)
                         if not dry_run:
                             path_i = Transpose(self.layouts[-1], layout_i, d, self.comm_cart)
-                        break
-
+                    break
             layout_i.index = i
             self.layouts.append(layout_i)
             if not dry_run:
@@ -162,10 +159,7 @@ class Distributor:
     def get_layout_object(self, input):
         """Dereference layout identifiers."""
 
-        if isinstance(input, Layout):
-            return input
-        else:
-            return self.layout_references[input]
+        return input if isinstance(input, Layout) else self.layout_references[input]
 
     @CachedMethod
     def buffer_size(self, scales):
@@ -419,17 +413,16 @@ class Transpose:
         group_shape = np.hstack([nfields, sub_shape])
         if np.prod(group_shape) == 0:
             return None, None, None  # no data
-        else:
-            # Create group buffer to hold group data contiguously
-            buffer0_shape = np.hstack([nfields, self.layout0.local_shape(scales)])
-            buffer1_shape = np.hstack([nfields, self.layout1.local_shape(scales)])
-            size = max(np.prod(buffer0_shape), np.prod(buffer1_shape))
-            buffer = fftw.create_array(shape=[size], dtype=self.dtype)
-            buffer0 = np.ndarray(shape=buffer0_shape, dtype=self.dtype, buffer=buffer)
-            buffer1 = np.ndarray(shape=buffer1_shape, dtype=self.dtype, buffer=buffer)
-            # Creat plan on subsequent axis of group shape
-            plan = TransposePlanner(group_shape, self.dtype, self.axis+1, self.comm_sub)
-            return plan, buffer0, buffer1
+        # Create group buffer to hold group data contiguously
+        buffer0_shape = np.hstack([nfields, self.layout0.local_shape(scales)])
+        buffer1_shape = np.hstack([nfields, self.layout1.local_shape(scales)])
+        size = max(np.prod(buffer0_shape), np.prod(buffer1_shape))
+        buffer = fftw.create_array(shape=[size], dtype=self.dtype)
+        buffer0 = np.ndarray(shape=buffer0_shape, dtype=self.dtype, buffer=buffer)
+        buffer1 = np.ndarray(shape=buffer1_shape, dtype=self.dtype, buffer=buffer)
+        # Creat plan on subsequent axis of group shape
+        plan = TransposePlanner(group_shape, self.dtype, self.axis+1, self.comm_sub)
+        return plan, buffer0, buffer1
 
     def increment(self, fields):
         """Transpose from layout0 to layout1."""
@@ -458,8 +451,7 @@ class Transpose:
     def increment_single(self, field):
         """Transpose field from layout0 to layout1."""
         scales = field.scales
-        plan = self._single_plan(scales)
-        if plan:
+        if plan := self._single_plan(scales):
             # Setup views of data in each layout
             data0 = field.data
             field.layout = self.layout1
@@ -473,8 +465,7 @@ class Transpose:
     def decrement_single(self, field):
         """Transpose field from layout1 to layout0."""
         scales = field.scales
-        plan = self._single_plan(scales)
-        if plan:
+        if plan := self._single_plan(scales):
             # Setup views of data in each layout
             data1 = field.data
             field.layout = self.layout0

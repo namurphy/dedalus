@@ -35,9 +35,8 @@ class Namespace(OrderedDict):
         if key in self:
             if not self.allow_overwrites:
                 raise SymbolicParsingError("Name '{}' is used multiple times.".format(key))
-        else:
-            if not key.isidentifier():
-                raise SymbolicParsingError("Name '{}' is not a valid identifier.".format(key))
+        elif not key.isidentifier():
+            raise SymbolicParsingError("Name '{}' is not a valid identifier.".format(key))
         super().__setitem__(key, value)
 
     def copy(self):
@@ -125,8 +124,7 @@ class ProblemBase:
     def add_equation(self, equation, condition="True", tau=None):
         """Add equation to problem."""
         logger.debug("Parsing Eqn {}".format(len(self.eqs)))
-        temp = {}
-        temp['tau'] = tau
+        temp = {'tau': tau}
         self._build_basic_dictionary(temp, equation, condition)
         self._build_object_forms(temp)
         self._check_eqn_conditions(temp)
@@ -220,18 +218,32 @@ class ProblemBase:
         #Compare the max value across ALL processors to make sure that everyone agrees.
         global_max = self.domain.dist.comm.allreduce(max_val, op=MPI.MAX)
         homogeneous = (global_max <= max_param*self.tol)
-        global_homogeneous = self.domain.dist.comm.allreduce(homogeneous, op=MPI.LAND)
+        if global_homogeneous := self.domain.dist.comm.allreduce(
+            homogeneous, op=MPI.LAND
+        ):
+            if max_val != 0:
+                logger.info(
+                    (
+                        f'WARNING: {str(expr)} will be considered homogeneous '
+                        + '(Max value: {:.3e}; below tolerance ({:.1e}) of max param: {:.3e}). '.format(
+                            max_val, self.tol, max_param
+                        )
+                    )
+                )
 
-        if not global_homogeneous:
-            logger.info(str(expr) + ' is not homogeneous; '+\
-                        'max_val = {:.3e} (above tolerance ({:.1e}) range of max parameter value {:.3e}).'.format(max_val, self.tol, max_param))
+            return True
+        else:
+            logger.info(
+                (
+                    f'{str(expr)} is not homogeneous; '
+                    + 'max_val = {:.3e} (above tolerance ({:.1e}) range of max parameter value {:.3e}).'.format(
+                        max_val, self.tol, max_param
+                    )
+                )
+            )
+
             logger.info('You may need to adjust your resolution or re-examine your equations.')
             return False
-        else:
-            if max_val != 0:
-                logger.info('WARNING: ' + str(expr) + ' will be considered homogeneous '+\
-                            '(Max value: {:.3e}; below tolerance ({:.1e}) of max param: {:.3e}). '.format(max_val, self.tol, max_param))
-            return True
 
     def _check_meta_consistency(self, LHS, RHS):
         """Check LHS and RHS metadata for compatability."""
@@ -242,9 +254,8 @@ class ProblemBase:
     def _check_meta_constant(self, LHS, RHS):
         """Check that RHS is constant if LHS is consant."""
         for axis in range(self.domain.dim):
-            if LHS.meta[axis]['constant']:
-                if not RHS.meta[axis]['constant']:
-                    raise SymbolicParsingError("LHS is constant but RHS is nonconstant along axis {}.".format(axis))
+            if LHS.meta[axis]['constant'] and not RHS.meta[axis]['constant']:
+                raise SymbolicParsingError("LHS is constant but RHS is nonconstant along axis {}.".format(axis))
 
     def _check_meta_parity(self, LHS, RHS):
         """Check that LHS parity matches RHS parity if RHS is nonzero."""
@@ -252,9 +263,8 @@ class ProblemBase:
             # Skip if not a parity axis
             if "parity" not in LHS.meta[axis]:
                 continue
-            if RHS != 0:
-                if LHS.meta[axis]['parity'] != RHS.meta[axis]['parity']:
-                    raise SymbolicParsingError("LHS and RHS parities along axis {} do not match.".format(axis))
+            if RHS != 0 and LHS.meta[axis]['parity'] != RHS.meta[axis]['parity']:
+                raise SymbolicParsingError("LHS and RHS parities along axis {} do not match.".format(axis))
 
     def _check_meta_envelope(self, LHS, RHS):
         """Check that LHS envelope matches RHS envelope if RHS is nonzero."""
@@ -262,9 +272,11 @@ class ProblemBase:
             # Skip if not an envelope axis
             if "envelope" not in LHS.meta[axis]:
                 continue
-            if RHS != 0:
-                if LHS.meta[axis]['envelope'] != RHS.meta[axis]['envelope']:
-                    raise SymbolicParsingError("LHS and RHS envelopes along axis {} do not match.".format(axis))
+            if (
+                RHS != 0
+                and LHS.meta[axis]['envelope'] != RHS.meta[axis]['envelope']
+            ):
+                raise SymbolicParsingError("LHS and RHS envelopes along axis {} do not match.".format(axis))
 
     def _find_max_param(self, params):
         """Finds the maximum value of the specified parameters"""
@@ -451,7 +463,7 @@ class NonlinearBoundaryValueProblem(ProblemBase):
         additions = {}
         # Add variable perturbations
         for var in self.variables:
-            pert = 'δ' + var
+            pert = f'δ{var}'
             additions[pert] = self.domain.new_field(name=pert)
             additions[pert].meta = self.meta[var]
             additions[pert].set_scales(1, keep_data=False)
@@ -465,7 +477,7 @@ class NonlinearBoundaryValueProblem(ProblemBase):
         """Set expressions for building solver."""
         ep = field.Scalar(name='__epsilon__')
         vars = [self.namespace[var] for var in self.variables]
-        perts = [self.namespace['δ'+var] for var in self.variables]
+        perts = [self.namespace[f'δ{var}'] for var in self.variables]
         # Build LHS operating on perturbations
         L = temp['LHS']
         for var, pert in zip(vars, perts):

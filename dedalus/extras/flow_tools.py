@@ -40,18 +40,12 @@ class GlobalArrayReducer:
 
     def global_min(self, data, empty=np.inf):
         """Compute global min of all array data."""
-        if data.size:
-            local_min = np.min(data)
-        else:
-            local_min = empty
+        local_min = np.min(data) if data.size else empty
         return self.reduce_scalar(local_min, MPI.MIN)
 
     def global_max(self, data, empty=-np.inf):
         """Compute global max of all array data."""
-        if data.size:
-            local_max = np.max(data)
-        else:
-            local_max = empty
+        local_max = np.max(data) if data.size else empty
         return self.reduce_scalar(local_max, MPI.MAX)
 
     def global_mean(self, data):
@@ -129,8 +123,7 @@ class GlobalFlowProperty:
             integral_field = integral_op.evaluate()
         # Communicate integral value to all processes
         integral_value = self.reducer.global_max(integral_field['g'])
-        average_value = integral_value / self.solver.domain.hypervolume
-        return average_value
+        return integral_value / self.solver.domain.hypervolume
 
 
 class CFL:
@@ -201,10 +194,7 @@ class CFL:
             local_freqs = np.sum(np.abs(field['g']) for field in self.frequencies.fields.values())
             # Compute new timestep from max frequency across all grid points
             max_global_freq = self.reducer.global_max(local_freqs)
-            if max_global_freq == 0.:
-                dt = np.inf
-            else:
-                dt = 1 / max_global_freq
+            dt = np.inf if max_global_freq == 0. else 1 / max_global_freq
             # Apply restrictions
             dt *= self.safety
             dt = min(dt, self.max_dt, self.max_change*self.stored_dt)

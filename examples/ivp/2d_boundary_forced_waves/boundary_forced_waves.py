@@ -77,13 +77,9 @@ waves.add_bc("right(f) = right(BF(t,x,ampl,freq))")
 # Solver
 solver = waves.build_solver(de.timesteppers.RK443)
 solver.stop_sim_time = 10.
-
-# Analysis
-analysis_tasks = []
 check = solver.evaluator.add_file_handler('checkpoints', iter=10, max_writes=200)
 check.add_system(solver.state)
-analysis_tasks.append(check)
-
+analysis_tasks = [check]
 # Main loop
 start_time = time.time()
 while solver.ok:

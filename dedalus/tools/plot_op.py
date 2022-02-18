@@ -103,10 +103,7 @@ def plot_operator(operator, fontsize=8, figsize=8, saveas=None):
             plt.plot([x[-1], sx], [y[-1], sy], '-k', alpha=0.5, zorder=0)
 
         # Plot circle at node
-        if isinstance(node, Leaf):
-            fc = '#9CBA7F'
-        else:
-            fc = '#B4CDCD'
+        fc = '#9CBA7F' if isinstance(node, Leaf) else '#B4CDCD'
         c = plt.Circle((x[-1], y[-1]), radius=0.2, fc=fc, ec='k', zorder=1)
         fig.gca().add_artist(c)
 

@@ -51,7 +51,7 @@ class MultiClass(SkipDispatch):
             if subclass._check_args(*args, **kw):
                 passlist.append(subclass)
 
-        if len(passlist) == 0:
+        if not passlist:
             return NotImplemented
         elif len(passlist) > 1:
             raise ValueError("Degenerate subclasses of {} found for the supplied arguments: {}, {}".format(cls, args, kw))

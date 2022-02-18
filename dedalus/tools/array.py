@@ -18,8 +18,7 @@ def interleaved_view(data):
         raise ValueError("Complex array required.")
     # Create view array
     iv_shape = data.shape + (2,)
-    iv = np.ndarray(iv_shape, dtype=np.float64, buffer=data.data)
-    return iv
+    return np.ndarray(iv_shape, dtype=np.float64, buffer=data.data)
 
 
 def reshape_vector(data, dim=2, axis=-1):
@@ -82,13 +81,11 @@ def add_sparse(A, B):
     """Add sparse matrices, promoting scalars to multiples of the identity."""
     A_is_scalar = np.isscalar(A)
     B_is_scalar = np.isscalar(B)
-    if A_is_scalar and B_is_scalar:
+    if A_is_scalar and B_is_scalar or not A_is_scalar and not B_is_scalar:
         return A + B
     elif A_is_scalar:
         I = sparse.eye(*B.shape, dtype=B.dtype, format=B.format)
         return A*I + B
-    elif B_is_scalar:
+    else:
         I = sparse.eye(*A.shape, dtype=A.dtype, format=A.format)
         return A + B*I
-    else:
-        return A + B

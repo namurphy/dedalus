@@ -42,11 +42,10 @@ class DimWrapper:
             return self.basis.element_name
 
     def __getitem__(self, item):
-        if self.field.layout.grid_space[self.axis]:
-            scale = self.field.scales[self.axis]
-            return self.basis.grid(scale)
-        else:
+        if not self.field.layout.grid_space[self.axis]:
             return self.basis.elements
+        scale = self.field.scales[self.axis]
+        return self.basis.grid(scale)
 
 
 def plot_bot(dset, image_axes, data_slices, image_scales=(0,0), clim=None, even_scale=False, cmap='RdBu_r', axes=None, figkw={}, title=None, func=None):
@@ -463,7 +462,7 @@ def get_1d_vertices(grid, cut_edges=False):
     diff = np.diff(grid)
     vert = np.zeros(grid.size+1)
     # Interior vertices: halfway between points
-    vert[1:-1] = grid[0:-1] + diff/2
+    vert[1:-1] = grid[:-1] + diff/2
     # Edge vertices: tight or reflect
     if cut_edges:
         vert[0] = grid[0]

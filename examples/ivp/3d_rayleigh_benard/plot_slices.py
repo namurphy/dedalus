@@ -120,8 +120,7 @@ if __name__ == "__main__":
     output_path = pathlib.Path(args['--output']).absolute()
     # Create output directory if needed
     with Sync() as sync:
-        if sync.comm.rank == 0:
-            if not output_path.exists():
-                output_path.mkdir()
+        if sync.comm.rank == 0 and not output_path.exists():
+            output_path.mkdir()
     post.visit_writes(args['<files>'], main, output=output_path)
 

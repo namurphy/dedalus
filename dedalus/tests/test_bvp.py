@@ -164,10 +164,7 @@ def LCCL(name, N, center=0.0, stretch=1.0, cwidth=1.0, dealias=1):
 @bench_wrapper
 def test_gaussian_free(benchmark, x_basis_class, Nx, dtype):
     # Stretch Laguerres
-    if x_basis_class is de.Hermite:
-        stretch = 1.0
-    else:
-        stretch = 0.1
+    stretch = 1.0 if x_basis_class is de.Hermite else 0.1
     # Bases and domain
     x_basis = x_basis_class('x', Nx, center=0, stretch=stretch)
     domain = de.Domain([x_basis], grid_dtype=dtype)
@@ -192,10 +189,7 @@ def test_gaussian_free(benchmark, x_basis_class, Nx, dtype):
 @bench_wrapper
 def test_gaussian_forced(benchmark, x_basis_class, Nx, dtype):
     # Stretch Laguerres
-    if x_basis_class is de.Hermite:
-        stretch = 1.0
-    else:
-        stretch = 0.1
+    stretch = 1.0 if x_basis_class is de.Hermite else 0.1
     # Bases and domain
     x_basis = x_basis_class('x', Nx, center=0, stretch=stretch)
     domain = de.Domain([x_basis], grid_dtype=dtype)

@@ -34,10 +34,7 @@ def addname(name):
 
 # Other helpers
 def is_integer(x):
-    if isinstance(x, int):
-        return True
-    else:
-        return x.is_integer()
+    return True if isinstance(x, int) else x.is_integer()
 
 
 class Operator(Future):
@@ -155,10 +152,7 @@ class NonlinearOperator(Operator):
             return self
 
     def split(self, *vars):
-        if self.has(*vars):
-            return [self, 0]
-        else:
-            return [0, self]
+        return [self, 0] if self.has(*vars) else [0, self]
 
 
 class GeneralFunction(NonlinearOperator, FutureField):
@@ -213,11 +207,7 @@ class GeneralFunction(NonlinearOperator, FutureField):
         return False
 
     def check_conditions(self):
-        # Fields must be in proper layout
-        for i in self._field_arg_indices:
-            if self.args[i].layout is not self.layout:
-                return False
-        return True
+        return all(self.args[i].layout is self.layout for i in self._field_arg_indices)
 
     def operate(self, out):
         # Apply func in proper layout
@@ -350,10 +340,7 @@ class Arithmetic(Future):
 
     def __str__(self):
         def substring(arg):
-            if isinstance(arg, Arithmetic):
-                return '({})'.format(arg)
-            else:
-                return str(arg)
+            return '({})'.format(arg) if isinstance(arg, Arithmetic) else str(arg)
         str_args = map(substring, self.args)
         return '%s' %self.str_op.join(str_args)
 
@@ -691,18 +678,16 @@ class Multiply(Arithmetic, metaclass=MultiClass):
             raise NonlinearOperatorError("Cannot multiply two linear terms.")
         elif arg0.has(*vars):
             arg0 = arg0.canonical_linear_form(*vars)
-            if isinstance(arg0, Multiply):
-                arg0a, arg0b = arg0.args
-                return (arg0a * arg1) * arg0b
-            else:
+            if not isinstance(arg0, Multiply):
                 return arg1 * arg0
+            arg0a, arg0b = arg0.args
+            return (arg0a * arg1) * arg0b
         elif arg1.has(*vars):
             arg1 = arg1.canonical_linear_form(*vars)
-            if isinstance(arg1, Multiply):
-                arg1a, arg1b = arg1.args
-                return (arg0 * arg1a) * arg1b
-            else:
+            if not isinstance(arg1, Multiply):
                 return arg0 * arg1
+            arg1a, arg1b = arg1.args
+            return (arg0 * arg1a) * arg1b
         else:
             return self
 
@@ -965,9 +950,7 @@ class PowerDataScalar(Power):
         return self.args[0].meta[axis]['constant']
 
     def meta_parity(self, axis):
-        # Constant data keeps even parity
-        constant = self.args[0].meta[axis]['constant']
-        if constant:
+        if constant := self.args[0].meta[axis]['constant']:
             return 1
         # Integer exponents maintain valid parity
         parity = self.args[0].meta[axis]['parity']
@@ -1066,9 +1049,8 @@ class LinearOperator(Operator):
     def split(self, *vars):
         if self.base in vars:
             return [self, 0]
-        else:
-            S0 = self.args[0].split(*vars)
-            return [self.base(S0[0], **self.kw), self.base(S0[1], **self.kw)]
+        S0 = self.args[0].split(*vars)
+        return [self.base(S0[0], **self.kw), self.base(S0[1], **self.kw)]
 
     def operator_dict(self, index, vars, **kw):
         """Produce matrix-operator dictionary over specified variables."""
@@ -1128,13 +1110,11 @@ class LinearBasisOperator(LinearOperator):
     def meta(self):
         meta = Metadata(self.domain)
         for axis in range(self.domain.dim):
-            if axis == self.axis:
                 # Call operator method
-                for key in meta[axis]:
+            for key in meta[axis]:
+                if axis == self.axis:
                     meta[axis][key] = getattr(self, 'meta_%s' %key)(axis)
-            else:
-                # Copy argument metadata
-                for key in meta[axis]:
+                else:
                     meta[axis][key] = self.args[0].meta[axis][key]
         return meta
 
@@ -1147,9 +1127,7 @@ class Separable(LinearBasisOperator, FutureField):
     def check_conditions(self):
         arg0, = self.args
         axis = self.axis
-        # Must be in coeff layout
-        is_coeff = not arg0.layout.grid_space[axis]
-        return is_coeff
+        return not arg0.layout.grid_space[axis]
 
     def operate(self, out):
         arg0, = self.args
@@ -1236,14 +1214,15 @@ class Integrate(LinearBasisOperator, metaclass=SkipDispatch):
     def __dispatch__(cls, arg0, out=None):
         # Cast to operand
         arg0 = Operand.cast(arg0)
-        # Check if operand depends on basis
-        if (cls.basis not in arg0.domain.bases) or (arg0.meta[cls.basis.name]['constant']):
-            length = cls.basis.interval[1] - cls.basis.interval[0]
-            integral = arg0*length
-            integral.out = out
-            raise SkipDispatchException(integral)
-        else:
+        if (
+            cls.basis in arg0.domain.bases
+            and not arg0.meta[cls.basis.name]['constant']
+        ):
             return (arg0,), {'out': out}
+        length = cls.basis.interval[1] - cls.basis.interval[0]
+        integral = arg0*length
+        integral.out = out
+        raise SkipDispatchException(integral)
 
     def __init__(self, arg0, **kw):
         # Cast argument to field
@@ -1252,12 +1231,7 @@ class Integrate(LinearBasisOperator, metaclass=SkipDispatch):
         self.axis = self.domain.bases.index(self.basis)
 
     def meta_constant(self, axis):
-        if axis == self.axis:
-            # Integral is constant
-            return True
-        else:
-            # Preserve constancy
-            return self.args[0].meta[axis]['constant']
+        return True if axis == self.axis else self.args[0].meta[axis]['constant']
 
 
 @parseable
@@ -1316,12 +1290,7 @@ class Interpolate(LinearBasisOperator, metaclass=SkipDispatch):
         return "interp({},'{}',{})".format(self.args[0], self.basis, self.position)
 
     def meta_constant(self, axis):
-        if axis == self.axis:
-            # Interpolant is constant
-            return True
-        else:
-            # Preserve constancy
-            return self.args[0].meta[axis]['constant']
+        return True if axis == self.axis else self.args[0].meta[axis]['constant']
 
 
 @parseable

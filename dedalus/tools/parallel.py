@@ -52,10 +52,7 @@ def sync_glob(path, glob, comm=MPI.COMM_WORLD):
     # Glob from rank 0 and broadcast
     # No barrier necessary on exit since broadcast is blocking
     with Sync(comm, enter=True, exit=False):
-        if comm.rank == 0:
-            result = tuple(pathlib.Path(path).glob(glob))
-        else:
-            result = None
+        result = tuple(pathlib.Path(path).glob(glob)) if comm.rank == 0 else None
         result = comm.bcast(result, root=0)
     return result
 

@@ -7,23 +7,20 @@ f(30) = B
 
 """
 
+
 import numpy as np
 from scipy import special
 
 from ... import public as de
 
 
-default_params = {}
-default_params['A'] = 2.
-default_params['B'] = 1.
-default_params['N'] = 65
+default_params = {'A': 2.0, 'B': 1.0, 'N': 65}
 
 
 def dedalus_domain(N):
     """Construct Dedalus domain for solving the Airy equation."""
     x_basis = de.Chebyshev('x', N, interval=(0., 30.))
-    domain = de.Domain([x_basis], grid_dtype=np.float64)
-    return domain
+    return de.Domain([x_basis], grid_dtype=np.float64)
 
 
 def dedalus_solution(A, B, N):
@@ -53,8 +50,7 @@ def exact_solution(A, B, N):
     Jv = special.jv(A, x)
     # Solve for coefficient using boundary condition
     c = B / special.jv(A, 30)
-    y_exact = c * Jv
-    return y_exact
+    return c * Jv
 
 
 def test_bessel(params=default_params):

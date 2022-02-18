@@ -87,11 +87,7 @@ class EigenvalueSolver:
 
         """
         # Build matrices
-        if rebuild_coeffs:
-            # Generate unique cache
-            cacheid = uuid.uuid4()
-        else:
-            cacheid = None
+        cacheid = uuid.uuid4() if rebuild_coeffs else None
         pencil.build_matrices(self.problem, ['M', 'L'], cacheid=cacheid)
         # Solve as dense general eigenvalue problem
         eig_output = eig(pencil.L_exp.A, b=-pencil.M_exp.A, **kw)
@@ -124,11 +120,7 @@ class EigenvalueSolver:
 
         """
         # Build matrices
-        if rebuild_coeffs:
-            # Generate unique cache
-            cacheid = uuid.uuid4()
-        else:
-            cacheid = None
+        cacheid = uuid.uuid4() if rebuild_coeffs else None
         pencil.build_matrices(self.problem, ['M', 'L'], cacheid=cacheid)
         # Solve as sparse general eigenvalue problem
         A = pencil.L_exp
@@ -269,7 +261,7 @@ class NonlinearBoundaryValueSolver:
         # Build systems
         namespace = problem.namespace
         vars = [namespace[var] for var in problem.variables]
-        perts = [namespace['δ'+var] for var in problem.variables]
+        perts = [namespace[f'δ{var}'] for var in problem.variables]
         self.state = FieldSystem(vars)
         self.perturbations = FieldSystem(perts)
 
@@ -512,10 +504,12 @@ class InitialValueSolver:
         """Advance system until stopping criterion is reached."""
 
         # Check for a stopping criterion
-        if np.isinf(self.stop_sim_time):
-            if np.isinf(self.stop_wall_time):
-                if np.isinf(self.stop_iteration):
-                    raise ValueError("No stopping criterion specified.")
+        if (
+            np.isinf(self.stop_sim_time)
+            and np.isinf(self.stop_wall_time)
+            and np.isinf(self.stop_iteration)
+        ):
+            raise ValueError("No stopping criterion specified.")
 
         # Evolve
         while self.ok:
