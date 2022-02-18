@@ -57,19 +57,17 @@ class CachedFunction:
         if defaults:
             self.defaults = dict(zip(reversed(argnames), reversed(defaults)))
         else:
-            self.defaults = dict()
+            self.defaults = {}
 
     def __call__(self, *args, **kw):
         # Serialize call from provided/default args/kw
         call = serialize_call(args, kw, self.argnames, self.defaults)
-        # Check cache for call
         if call in self.cache:
             return self.cache[call]
-        else:
-            if len(self.cache) == self.max_size:
-                self.cache.popitem(last=False)
-            self.cache[call] = result = self.function(*args, **kw)
-            return result
+        if len(self.cache) == self.max_size:
+            self.cache.popitem(last=False)
+        self.cache[call] = result = self.function(*args, **kw)
+        return result
 
 
 class CachedMethod(CachedFunction):
@@ -107,7 +105,7 @@ class CachedClass(type):
         if defaults:
             cls._defaults = dict(zip(reversed(argnames), reversed(defaults)))
         else:
-            cls._defaults = dict()
+            cls._defaults = {}
 
     def __call__(cls, *args, **kw):
 

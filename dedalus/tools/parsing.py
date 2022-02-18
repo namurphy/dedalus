@@ -27,7 +27,7 @@ def split_equation(equation):
         elif (character == '=') and (parentheses == 0):
             top_level_equals.append(i)
     # Raise if there isn't exactly one top-level equals sign
-    if len(top_level_equals) == 0:
+    if not top_level_equals:
         raise SymbolicParsingError("Equation contains no top-level equals signs.")
     elif len(top_level_equals) > 1:
         raise SymbolicParsingError("Equation contains multiple top-level equals signs.")
@@ -48,15 +48,11 @@ def split_call(call):
     ('f', ())
 
     """
-    # Check if signature matches a function call
-    match = re.match('(.+)\((.*)\)', call)
-    # Return head and arguments
-    if match:
-        head, argstring = match.groups()
-        args = tuple(argstring.replace(' ','').split(','))
-        return head, args
-    else:
+    if not (match := re.match('(.+)\((.*)\)', call)):
         return call, ()
+    head, argstring = match.groups()
+    args = tuple(argstring.replace(' ','').split(','))
+    return head, args
 
 
 def lambdify_functions(call, result):
@@ -73,12 +69,11 @@ def lambdify_functions(call, result):
 
     """
     head, args = split_call(call)
-    if args:
-        # Build lambda expression
-        argstring = ','.join(args)
-        return head, 'lambda {}: {}'.format(argstring, result)
-    else:
+    if not args:
         # Return original rule
         return call, result
+    # Build lambda expression
+    argstring = ','.join(args)
+    return head, 'lambda {}: {}'.format(argstring, result)
 
 

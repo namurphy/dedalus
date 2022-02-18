@@ -30,9 +30,7 @@ def diagonal_solver(Nx, Ny, dtype):
     problem.parameters['F'] = F
     problem.add_equation("dx(dx(u)) + dy(dy(u)) = F", condition="(nx != 0) or (ny != 0)")
     problem.add_equation("u = 0", condition="(nx == 0) and (ny == 0)")
-    # Solver
-    solver = problem.build_solver()
-    return solver
+    return problem.build_solver()
 
 
 def block_solver(Nx, Ny, dtype):
@@ -52,9 +50,7 @@ def block_solver(Nx, Ny, dtype):
     problem.add_equation("Lu - dx(ux) - dy(uy) = 0")
     problem.add_equation("Lu = F", condition="(nx != 0) or (ny != 0)")
     problem.add_equation("u = 0", condition="(nx == 0) and (ny == 0)")
-    # Solver
-    solver = problem.build_solver()
-    return solver
+    return problem.build_solver()
 
 
 def coupled_solver(Nx, Ny, dtype):
@@ -76,9 +72,7 @@ def coupled_solver(Nx, Ny, dtype):
     problem.add_bc("left(u) - right(u) = 0")
     problem.add_bc("left(uy) - right(uy) = 0", condition="nx != 0")
     problem.add_bc("left(u) = 0", condition="nx == 0")
-    # Solver
-    solver = problem.build_solver()
-    return solver
+    return problem.build_solver()
 
 
 solvers = {'diagonal': diagonal_solver(8, 512, np.float64),

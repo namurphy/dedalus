@@ -62,25 +62,19 @@ class Basis:
         return '<%s %i>' %(self.__class__.__name__, id(self))
 
     def __str__(self):
-        if self.name:
-            return self.name
-        else:
-            return self.__repr__()
+        return self.name or self.__repr__()
 
     def set_dtype(self, grid_dtype):
         """Set transforms based on grid data type."""
         raise NotImplementedError()
-        return coeff_dtype
 
     def forward(self, gdata, cdata, axis, meta, scale):
         """Grid-to-coefficient transform."""
         raise NotImplementedError()
-        return cdata
 
     def backward(self, cdata, gdata, axis, meta, scale):
         """Coefficient-to-grid transform."""
         raise NotImplementedError()
-        return gdata
 
     def differentiate(self, cdata, cderiv, axis):
         """Differentiate using coefficients."""
@@ -128,7 +122,7 @@ class Basis:
     @CachedMethod
     def grid_spacing_object(self, domain, axis):
         from .field import Array
-        spacing = Array(domain, name='s'+self.name)
+        spacing = Array(domain, name=f's{self.name}')
         spacing.from_global_vector(self.grid_spacing(self.dealias), axis)
         return spacing
 
@@ -220,15 +214,13 @@ class ImplicitBasis(Basis):
     def DropTau(self, n_tau):
         """Matrix dropping tau+match rows."""
         N = self.coeff_size
-        DLR = sparse.eye(N-n_tau, N, dtype=self.coeff_dtype, format='csr')
-        return DLR
+        return sparse.eye(N-n_tau, N, dtype=self.coeff_dtype, format='csr')
 
     @CachedAttribute
     def DropNonfirst(self):
         """Matrix dropping non-first rows."""
         N = self.coeff_size
-        DNR = sparse.eye(1, N, dtype=self.coeff_dtype, format='csr')
-        return DNR
+        return sparse.eye(1, N, dtype=self.coeff_dtype, format='csr')
 
     @CachedAttribute
     def DropNonconstant(self):
@@ -287,7 +279,7 @@ class Chebyshev(ImplicitBasis):
         # Attributes
         self.subbases = [self]
         self.name = name
-        self.element_name = 'T' + name
+        self.element_name = f'T{name}'
         self.base_grid_size = base_grid_size
         self.interval = tuple(interval)
         self.dealias = dealias
@@ -390,7 +382,7 @@ class Chebyshev(ImplicitBasis):
         """Build FFTW plans and temporary arrays."""
         # Note: regular method used to cache through basis instance
         logger.debug("Building FFTW DCT plan for (dtype, gshape, axis) = (%s, %s, %s)" %(dtype, gshape, axis))
-        flags = ['FFTW_'+FFTW_RIGOR.upper()]
+        flags = [f'FFTW_{FFTW_RIGOR.upper()}']
         plan = fftw.DiscreteCosineTransform(dtype, gshape, axis, flags=flags)
         temp = fftw.create_array(gshape, dtype)
 
@@ -537,19 +529,15 @@ class Chebyshev(ImplicitBasis):
                 matrix = sparse.lil_matrix((size, size), dtype=dtype)
                 for i in range(size-1):
                     for j in range(i+1, size, 2):
-                        if i == 0:
-                            matrix[i, j] = j / stretch
-                        else:
-                            matrix[i, j] = 2. * j / stretch
+                        matrix[i, j] = j / stretch if i == 0 else 2. * j / stretch
                 return matrix.tocsr()
 
             def explicit_form(self, input, output, axis):
                 """Differentiation by recursion on coefficients."""
                 shape = input.shape
                 # Currently setup just for last axis
-                if axis != -1:
-                    if axis != (len(shape) - 1):
-                        raise NotImplementedError("Chebyshev derivative only implemented for last axis.")
+                if axis not in [-1, len(shape) - 1]:
+                    raise NotImplementedError("Chebyshev derivative only implemented for last axis.")
                 # Create 2D views of arrays
                 reduced_shape = (int(np.prod(shape[:-1])), shape[-1])
                 input_view = input.reshape(reduced_shape)
@@ -645,7 +633,7 @@ class Legendre(ImplicitBasis):
         # Attributes
         self.subbases = [self]
         self.name = name
-        self.element_name = 'P' + name
+        self.element_name = f'P{name}'
         self.base_grid_size = base_grid_size
         self.interval = tuple(interval)
         self.dealias = dealias
@@ -869,9 +857,8 @@ class Legendre(ImplicitBasis):
                 """Differentiation by recursion on coefficients."""
                 shape = input.shape
                 # Currently setup just for last axis
-                if axis != -1:
-                    if axis != (len(shape) - 1):
-                        raise NotImplementedError("Legendre derivative only implemented for last axis.")
+                if axis not in [-1, len(shape) - 1]:
+                    raise NotImplementedError("Legendre derivative only implemented for last axis.")
                 # Create 2D views of arrays
                 reduced_shape = (int(np.prod(shape[:-1])), shape[-1])
                 input_view = input.reshape(reduced_shape)
@@ -982,7 +969,7 @@ class Hermite(ImplicitBasis):
         # Attributes
         self.subbases = [self]
         self.name = name
-        self.element_name = 'h' + name
+        self.element_name = f'h{name}'
         self.base_grid_size = base_grid_size
         self.interval = sorted(tuple(oriented_interval))
         self.dealias = dealias
@@ -1108,16 +1095,15 @@ class Hermite(ImplicitBasis):
             basis = self
 
             def meta_envelope(self, axis):
-                if axis == self.axis:
-                    # Check current envelope
-                    if self.args[0].meta[axis]['envelope']:
-                        # Integral is a constant
-                        return False
-                    else:
-                        raise ValueError("Hermite polynomials are non-integrable.")
-                else:
+                if axis != self.axis:
                     # Preserve envelope
                     return self.args[0].meta[axis]['envelope']
+                # Check current envelope
+                if self.args[0].meta[axis]['envelope']:
+                    # Integral is a constant
+                    return False
+                else:
+                    raise ValueError("Hermite polynomials are non-integrable.")
 
             def matrix_form(self):
                 # Call class method with arg metadata
@@ -1170,12 +1156,7 @@ class Hermite(ImplicitBasis):
             basis = self
 
             def meta_envelope(self, axis):
-                if axis == self.axis:
-                    # Interpolation is a constant
-                    return False
-                else:
-                    # Preserve envelope
-                    return self.args[0].meta[axis]['envelope']
+                return False if axis == self.axis else self.args[0].meta[axis]['envelope']
 
             def matrix_form(self):
                 # Call class method with arg metadata
@@ -1259,16 +1240,14 @@ class Hermite(ImplicitBasis):
                 dtype = cls.basis.coeff_dtype
                 stretch = cls.basis._grid_stretch
                 matrix = sparse.lil_matrix((size, size), dtype=dtype)
-                if envelope:
-                    for n in range(size):
+                for n in range(size):
+                    if envelope:
                         if n > 0:
                             matrix[n-1, n] = np.sqrt(n/2) / stretch
                         if n < (size-1):
                             matrix[n+1, n] = -np.sqrt((n+1)/2) / stretch
-                else:
-                    for n in range(size):
-                        if n > 0:
-                            matrix[n-1, n] = 2 * n / stretch
+                    elif n > 0:
+                        matrix[n-1, n] = 2 * n / stretch
                 return matrix.tocsr()
 
         return DifferentiateHermite
@@ -1378,7 +1357,7 @@ class Laguerre(ImplicitBasis):
         # Attributes
         self.subbases = [self]
         self.name = name
-        self.element_name = 'g' + name
+        self.element_name = f'g{name}'
         self.base_grid_size = base_grid_size
         self.interval = sorted(tuple(oriented_interval))
         self.dealias = dealias
@@ -1425,10 +1404,7 @@ class Laguerre(ImplicitBasis):
         # Preallocate list for outputs
         Y = [None] * N
         # Use powers to get identity element of X type and copy X
-        if envelope:
-            Y[0] = np.exp(-X / 2)
-        else:
-            Y[0] = X**0
+        Y[0] = np.exp(-X / 2) if envelope else X**0
         Y[1] = (X**0 - X) * Y[0]
         for n in range(1, N-1):
             Y[n+1] = ((2*n + 1)*X**0 - X) / (n + 1) * Y[n] - n / (n + 1) * Y[n-1]
@@ -1502,16 +1478,15 @@ class Laguerre(ImplicitBasis):
             basis = self
 
             def meta_envelope(self, axis):
-                if axis == self.axis:
-                    # Check current envelope
-                    if self.args[0].meta[axis]['envelope']:
-                        # Integral is a constant
-                        return False
-                    else:
-                        raise ValueError("Laguerre polynomials are non-integrable.")
-                else:
+                if axis != self.axis:
                     # Preserve envelope
                     return self.args[0].meta[axis]['envelope']
+                # Check current envelope
+                if self.args[0].meta[axis]['envelope']:
+                    # Integral is a constant
+                    return False
+                else:
+                    raise ValueError("Laguerre polynomials are non-integrable.")
 
             def matrix_form(self):
                 # Call class method with arg metadata
@@ -1565,12 +1540,7 @@ class Laguerre(ImplicitBasis):
             basis = self
 
             def meta_envelope(self, axis):
-                if axis == self.axis:
-                    # Interpolation is a constant
-                    return False
-                else:
-                    # Preserve envelope
-                    return self.args[0].meta[axis]['envelope']
+                return False if axis == self.axis else self.args[0].meta[axis]['envelope']
 
             def matrix_form(self):
                 # Call class method with arg metadata
@@ -1770,7 +1740,7 @@ class Fourier(TransverseBasis):
 
         # Attributes
         self.name = name
-        self.element_name = 'k' + name
+        self.element_name = f'k{name}'
         self.base_grid_size = base_grid_size
         self.interval = tuple(interval)
         self.dealias = dealias
@@ -1890,7 +1860,7 @@ class Fourier(TransverseBasis):
         """Build FFTW plans and temporary arrays."""
         # Note: regular method used to cache through basis instance
         logger.debug("Building FFTW FFT plan for (dtype, gshape, axis) = (%s, %s, %s)" %(dtype, gshape, axis))
-        flags = ['FFTW_'+FFTW_RIGOR.upper()]
+        flags = [f'FFTW_{FFTW_RIGOR.upper()}']
         plan = fftw.FourierTransform(dtype, gshape, axis, flags=flags)
         temp = fftw.create_array(plan.cshape, np.complex128)
         if dtype == np.float64:
@@ -1969,10 +1939,8 @@ class Fourier(TransverseBasis):
             def operate(self, out):
                 arg0, = self.args
                 axis = self.axis
-                if self.basis.grid_dtype == np.float64:
-                    # Subsequent basis must be in grid space for proper interpolation symmetry
-                    if axis != (self.domain.dim - 1):
-                        arg0.require_grid_space(axis+1)
+                if self.basis.grid_dtype == np.float64 and axis != (self.domain.dim - 1):
+                    arg0.require_grid_space(axis+1)
                 # Require coeff+local layout
                 arg0.require_coeff_space(axis)
                 arg0.require_local(axis)
@@ -2062,7 +2030,7 @@ class SinCos(TransverseBasis):
 
         # Attributes
         self.name = name
-        self.element_name = 'k' + name
+        self.element_name = f'k{name}'
         self.base_grid_size = base_grid_size
         self.interval = tuple(interval)
         self.dealias = dealias
@@ -2218,7 +2186,7 @@ class SinCos(TransverseBasis):
     @CachedMethod
     def _fftw_dct_setup(self, dtype, gshape, axis):
         """Build FFTW DCT plan and temporary array."""
-        flags = ['FFTW_'+FFTW_RIGOR.upper()]
+        flags = [f'FFTW_{FFTW_RIGOR.upper()}']
         logger.debug("Building FFTW DCT plan for (dtype, gshape, axis) = (%s, %s, %s)" %(dtype, gshape, axis))
         plan = fftw.DiscreteCosineTransform(dtype, gshape, axis, flags=flags)
         temp = fftw.create_array(gshape, dtype)
@@ -2227,7 +2195,7 @@ class SinCos(TransverseBasis):
     @CachedMethod
     def _fftw_dst_setup(self, dtype, gshape, axis):
         """Build FFTW DST plan and temporary array."""
-        flags = ['FFTW_'+FFTW_RIGOR.upper()]
+        flags = [f'FFTW_{FFTW_RIGOR.upper()}']
         logger.debug("Building FFTW DST plan for (dtype, gshape, axis) = (%s, %s, %s)" %(dtype, gshape, axis))
         plan = fftw.DiscreteSineTransform(dtype, gshape, axis, flags=flags)
         temp = fftw.create_array(gshape, dtype)
@@ -2280,12 +2248,7 @@ class SinCos(TransverseBasis):
             basis = self
 
             def meta_parity(self, axis):
-                if axis == self.axis:
-                    # Integral is a scalar (even parity)
-                    return 1
-                else:
-                    # Preserve parity
-                    return self.args[0].meta[axis]['parity']
+                return 1 if axis == self.axis else self.args[0].meta[axis]['parity']
 
             def explicit_form(self, input, output, axis):
                 dim = self.domain.dim
@@ -2318,12 +2281,7 @@ class SinCos(TransverseBasis):
             basis = self
 
             def meta_parity(self, axis):
-                if axis == self.axis:
-                    # Interpolation is a scalar (even parity)
-                    return 1
-                else:
-                    # Preserve parity
-                    return self.args[0].meta[axis]['parity']
+                return 1 if axis == self.axis else self.args[0].meta[axis]['parity']
 
             def explicit_form(self, input, output, axis):
                 dim = self.domain.dim
@@ -2362,12 +2320,7 @@ class SinCos(TransverseBasis):
 
             def meta_parity(self, axis):
                 parity0 = self.args[0].meta[axis]['parity']
-                if axis == self.axis:
-                    # Flip parity
-                    return (-1) * parity0
-                else:
-                    # Preserve parity
-                    return parity0
+                return (-1) * parity0 if axis == self.axis else parity0
 
             @CachedMethod
             def vector_form(self):
@@ -2389,12 +2342,7 @@ class SinCos(TransverseBasis):
 
             def meta_parity(self, axis):
                 parity0 = self.args[0].meta[axis]['parity']
-                if axis == self.axis:
-                    # Flip parity
-                    return (-1) * parity0
-                else:
-                    # Preserve parity
-                    return parity0
+                return (-1) * parity0 if axis == self.axis else parity0
 
             @CachedMethod
             def vector_form(self):
@@ -2469,7 +2417,7 @@ class Compound(ImplicitBasis):
     def set_dtype(self, grid_dtype):
         """Determine coefficient properties from grid dtype."""
         # Ensure subbases return same coeff dtype
-        coeff_dtypes = list(basis.set_dtype(grid_dtype) for basis in self.subbases)
+        coeff_dtypes = [basis.set_dtype(grid_dtype) for basis in self.subbases]
         if len(set(coeff_dtypes)) > 1:
             raise ValueError("Bases returned different coeff_dtypes.")
         self.grid_dtype = np.dtype(grid_dtype)
@@ -2535,16 +2483,15 @@ class Compound(ImplicitBasis):
             basis = self
 
             def meta_envelope(self, axis):
-                if axis == self.axis:
-                    # Check current envelope
-                    if self.args[0].meta[axis]['envelope']:
-                        # Integral is a constant
-                        return False
-                    else:
-                        raise ValueError("Laguerre polynomials are non-integrable.")
-                else:
+                if axis != self.axis:
                     # Preserve envelope
                     return self.args[0].meta[axis]['envelope']
+                # Check current envelope
+                if self.args[0].meta[axis]['envelope']:
+                    # Integral is a constant
+                    return False
+                else:
+                    raise ValueError("Laguerre polynomials are non-integrable.")
 
             @CachedMethod
             def matrix_form(self):
@@ -2579,12 +2526,7 @@ class Compound(ImplicitBasis):
             basis = self
 
             def meta_envelope(self, axis):
-                if axis == self.axis:
-                    # Interpolation is a constant
-                    return False
-                else:
-                    # Preserve envelope
-                    return self.args[0].meta[axis]['envelope']
+                return False if axis == self.axis else self.args[0].meta[axis]['envelope']
 
             @CachedMethod
             def matrix_form(self):

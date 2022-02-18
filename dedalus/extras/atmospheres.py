@@ -11,7 +11,7 @@ class DedalusAtmosphere():
         self.domain = d2.Domain([z_basis])
         self.z = z_basis.grid
 
-        self.atmosphere = dict()
+        self.atmosphere = {}
         self.keys = sorted(self.base_atmosphere.keys())
         self.N_parameters = len(self.keys)
 
@@ -110,8 +110,8 @@ class Polytrope(DedalusAtmosphere):
         self.z0 = z0
         self.z = z.grid
 
-        self.base_atmosphere = dict()
-        self.titles = dict()
+        self.base_atmosphere = {}
+        self.titles = {}
 
         self.base_atmosphere['grad_ln_rho'] = self.grad_ln_rho()
         self.titles['grad_ln_rho'] = r"$\nabla \ln \rho_0$"

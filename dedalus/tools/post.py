@@ -289,7 +289,7 @@ def merge_sets(joint_path, set_paths, cleanup=False, comm=MPI.COMM_WORLD):
     for set_path in set_paths:
         with h5py.File(str(set_path), mode='r') as file:
             set_starts.append(np.min(file['scales']['sim_time'][:]))
-    set_starts, set_paths = zip(*[pair for pair in sorted(zip(set_starts, set_paths))])
+    set_starts, set_paths = zip(*list(sorted(zip(set_starts, set_paths))))
 
     # Find number of writes to extract from each set
     # (only extract writes from sim times before start of next set)

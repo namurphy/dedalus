@@ -25,11 +25,10 @@ class MultiDict(AliasDict):
     def __getitem__(self, key):
         if key == slice(None):
             key = tuple(self.keys())
-        if isinstance(key, tuple):
-            sup = super()
-            return DictGroup(*[sup.__getitem__(item) for item in key])
-        else:
+        if not isinstance(key, tuple):
             return super().__getitem__(key)
+        sup = super()
+        return DictGroup(*[sup.__getitem__(item) for item in key])
 
 
 class DictGroup:

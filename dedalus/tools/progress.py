@@ -63,10 +63,16 @@ def track(iterable, write, desc='Iteration', iter=1, frac=1., dt=np.inf):
             projected_time = length / rate
             remaining_time = projected_time - elapsed_time
             # Build and write message
-            message = [desc]
-            message.append('{:d}/{:d} (~{:d}%)'.format(completed, length, percent))
-            message.append('Elapsed: {:s}, Remaining: {:s}, Rate: {:.1e}/s'.format(
-                format_time(elapsed_time), format_time(remaining_time), rate))
+            message = [
+                desc,
+                '{:d}/{:d} (~{:d}%)'.format(completed, length, percent),
+                'Elapsed: {:s}, Remaining: {:s}, Rate: {:.1e}/s'.format(
+                    format_time(elapsed_time),
+                    format_time(remaining_time),
+                    rate,
+                ),
+            ]
+
             message = ' '.join(message)
             write(message)
 

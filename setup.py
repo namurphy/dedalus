@@ -26,10 +26,7 @@ import glob
 # Helper functions
 def bool_env(name, unset=False):
     env_var = os.getenv(name)
-    if env_var is None:
-        return unset
-    else:
-        return bool(strtobool(env_var))
+    return unset if env_var is None else bool(strtobool(env_var))
 
 def check_env_var(env_var):
     path = None
@@ -50,8 +47,7 @@ def get_prefix(name):
                 '%s_PREFIX']
     for pattern in patterns:
         env_var = pattern %name.upper()
-        path = check_env_var(env_var)
-        if path:
+        if path := check_env_var(env_var):
             return path
     # Check likely places
     places = [os.environ.get('CONDA_PREFIX', ''),
@@ -62,8 +58,7 @@ def get_prefix(name):
     for place in places:
         placelib = os.path.join(place, 'lib')
         guess = os.path.join(placelib, '*%s*' %name)
-        matches = glob.glob(guess)
-        if matches:
+        if matches := glob.glob(guess):
             print("  Found matching library in %s" %placelib)
             return place
     print("  Cannot find env var %s_PATH or libraries matching %s." %(name.upper(), name))
@@ -72,23 +67,19 @@ def get_prefix(name):
 def get_include(name):
     print("Looking for %s include path" %name)
     env_var = "%s_INCLUDE_PATH" % name.upper()
-    path = check_env_var(env_var)
-    if path:
+    if path := check_env_var(env_var):
         return path
     print("  Cannot find env var %s" %env_var)
-    prefix = get_prefix(name)
-    if prefix:
+    if prefix := get_prefix(name):
         return os.path.join(prefix, 'include')
 
 def get_lib(name):
     print("Looking for %s library path" %name)
     env_var = "%s_LIBRARY_PATH" % name.upper()
-    path = check_env_var(env_var)
-    if path:
+    if path := check_env_var(env_var):
         return path
     print("  Cannot find env var %s" %env_var)
-    prefix = get_prefix(name)
-    if prefix:
+    if prefix := get_prefix(name):
         return os.path.join(prefix, 'lib')
 
 # C-dependency paths for extension compilation and linking
@@ -179,8 +170,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 # Cython directives
-compiler_directives = {}
-compiler_directives['language_level'] = 3
+compiler_directives = {'language_level': 3}
 if bool_env('CYTHON_PROFILE', unset=False):
     compiler_directives['profile'] = True
 

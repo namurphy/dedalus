@@ -3,6 +3,7 @@ Logging setup.
 
 """
 
+
 import pathlib
 import logging
 from mpi4py import MPI
@@ -25,9 +26,8 @@ filename = config['logging']['filename']
 # Root logger config
 rootlogger = logging.root
 rootlogger.setLevel(0)
-if nonroot_level.lower() != 'none':
-    if MPI_RANK > 0:
-        rootlogger.setLevel(getattr(logging, nonroot_level.upper()))
+if nonroot_level.lower() != 'none' and MPI_RANK > 0:
+    rootlogger.setLevel(getattr(logging, nonroot_level.upper()))
 
 # Formatter
 formatter = logging.Formatter('%(asctime)s %(name)s {}/{} %(levelname)s :: %(message)s'.format(MPI_RANK, MPI_SIZE))
@@ -43,9 +43,8 @@ if stdout_level.lower() != 'none':
 if file_level.lower() != 'none':
     file_path = pathlib.Path('%s_p%i.log' %(filename, MPI_RANK))
     with Sync(MPI.COMM_WORLD):
-        if MPI_RANK == 0:
-            if not file_path.parent.exists():
-                file_path.parent.mkdir(parents=True)
+        if MPI_RANK == 0 and not file_path.parent.exists():
+            file_path.parent.mkdir(parents=True)
     file_handler = logging.FileHandler(str(file_path), mode='w')
     file_handler.setLevel(getattr(logging, file_level.upper()))
     file_handler.setFormatter(formatter)

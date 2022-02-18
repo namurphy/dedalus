@@ -110,10 +110,7 @@ def test_wave_sparse_evp(benchmark, x_basis_class, Nx, dtype):
 def test_qho_dense_evp(benchmark, x_basis_class, Nx, dtype):
     n_comp = 10
     # Stretch Laguerres
-    if x_basis_class is de.Hermite:
-        stretch = 1.0
-    else:
-        stretch = 0.4
+    stretch = 1.0 if x_basis_class is de.Hermite else 0.4
     # Domain
     x_basis = x_basis_class('x', Nx, center=0, stretch=stretch)
     domain = de.Domain([x_basis], np.float64)

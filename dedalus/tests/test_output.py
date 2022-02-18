@@ -45,7 +45,7 @@ def test_1d_output(x_basis_class, Nx, timestepper, dtype):
     # Loop
     dt = 1e-5
     iter = 10
-    for i in range(iter):
+    for _ in range(iter):
         solver.step(dt)
     # Check solution
     post.merge_process_files('test_output')
